@@ -1,43 +1,69 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+import flask
+from flask import *
+import pandas as pd
+import numpy as np
+import csv
+import os
+from csv import writer 
+import datetime
+import random
+import json
+import io
+import sys
+import glob
+import shutil
+import cv2
+from pyzbar.pyzbar import decode
+import re
+from werkzeug.utils import secure_filename
+import cv2
 
-# [START gae_flex_quickstart]
-import logging
-
-from flask import Flask
-
+__author__ = 'lambert'
 
 app = Flask(__name__)
 
 
-@app.route('/')
-def hello():
-    """Return a friendly HTTP greeting."""
-    return 'Hello World!'
+def create_dir(file):
+    if not os.path.exists(file):
+        os.mkdir(file)
+
+def show_data(img):
+    image = cv2.imread(img)
+    detectedBarcodes = decode(image)
+    for barcode in detectedBarcodes:
+        data = barcode.data
+        type_ = barcode.type
+        return data, type_
+
+@app.route("/")
+def index():
+    return "Success"
 
 
-@app.errorhandler(500)
-def server_error(e):
-    logging.exception('An error occurred during a request.')
-    return """
-    An internal error occurred: <pre>{}</pre>
-    See logs for full stacktrace.
-    """.format(e), 500
+@app.route("/barcode", methods=['POST'])
+def barcode():
+    APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+    target = os.path.join(APP_ROOT, 'data_in')
+    create_dir(target)
+
+    # global destination, filename, json_file
+    if request.method == 'POST':
+
+        for file in request.files.getlist("file"):
+            print('file: ')
+            filename = file.filename
+            print(filename)
+            destination = "/".join([target, filename])
+            print(destination)
+            file.save(destination)
+
+        if destination.endswith(".jpg") or destination.endswith(".JPG") or destination.endswith(".png") or destination.endswith(".PNG") or destination.endswith(".jpeg") or destination.endswith("JPEG"):
+            data, type_ = show_data(destination)
+
+            return (data)
+
+if __name__ == "__main__":
+    app.secret_key = os.urandom(24)
+    app.run(host='0.0.0.0', port=5000, debug=False)
 
 
-if __name__ == '__main__':
-    # This is used when running locally. Gunicorn is used to run the
-    # application on Google App Engine. See entrypoint in app.yaml.
-    app.run(host='127.0.0.1', port=8080, debug=True)
-# [END gae_flex_quickstart]
